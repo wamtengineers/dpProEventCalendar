@@ -460,7 +460,7 @@ add_action( 'wp_ajax_submitEvent', 'dpProEventCalendar_submitEvent' );
 
 function dpProEventCalendar_submitEvent() {
 	header("HTTP/1.1 200 OK");
-	global $current_user, $dpProEventCalendar_cache, $dpProEventCalendar;
+	global $current_user, $dpProEventCalendar_cache, $dpProEventCalendar,$wpdb,$table_prefix;
 
 		$nonce = $_POST['postEventsNonce'];
 	//if ( ! wp_verify_nonce( $nonce, 'ajax-get-events-nonce' ) )
@@ -730,7 +730,106 @@ function dpProEventCalendar_submitEvent() {
 		 $dpProEventCalendar_cache['calendar_id_'.$calendar] = array();
 		 update_option( 'dpProEventCalendar_cache', $dpProEventCalendar_cache );
 		}
+	$table_name_booking = $table_prefix.DP_PRO_EVENT_CALENDAR_TABLE_BOOKING;
 
+		
+	$comment = '';
+	$id_event = $inserted;
+	$id_coupon = '';
+	$coupon = '';
+	$name = '';
+	$phone = '';
+	$email = '';
+	$event_date = $_POST['date'];
+	$ticket = '';
+	$extra_fields = '';
+	$price = get_post_meta($id_event, 'pec_booking_price', true);
+	if($price == '.00' || $price == '0') {
+		$price = "";
+	}
+
+	$quantity = 1;
+	
+	require_once('classes/base.class.php');
+
+	$dpProEventCalendar_class = new DpProEventCalendar( false, $calendar );
+
+	$wpdb->insert(
+		$table_name_booking,
+		array(
+			'id_calendar' 		=> $calendar,
+			'booking_date' 		=> date('Y-m-d H:i:s'),
+			'event_date'			=> $event_date,
+			'id_event'				=> $id_event,
+			'id_user'					=> $current_user->ID,
+			'id_coupon'				=> $id_coupon,
+			'coupon_discount'	=> $coupon_discount,
+			'comment'					=> $comment,
+			'quantity'				=> $quantity,
+			'name'						=> $name,
+			'phone'						=> $phone,
+			'email'						=> $email,
+			'extra_fields'		=> $extra_fields,
+			'status'					=> ''
+			// 'status'					=> (($price != "" || $ticket != "") ? 'pending' : 'pending')
+		),
+		array(
+			'%d',
+			'%s',
+			'%s',
+			'%d',
+			'%d',
+			'%d',
+			'%s',
+			'%s',
+			'%d',
+			'%s',
+			'%s',
+			'%s',
+			'%s',
+			'%s'
+		)
+	);
+
+	$id_booking = $wpdb->insert_id;
+
+	do_action('pec_action_book_event', $id_booking, $id_event, $current_user->ID);
+
+	if($price == "" && $ticket == '') {
+
+		// Send emails for free bookings
+
+		if(is_user_logged_in()) {
+
+			$userdata = get_userdata($current_user->ID);
+
+		} else {
+
+			$userdata = new stdClass();
+			$userdata->display_name = $name;
+			$userdata->user_email = $email;
+
+		}
+
+		if($dpProEventCalendar_class->calendar_obj->booking_email_template_user == '') {
+			$dpProEventCalendar_class->calendar_obj->booking_email_template_user = "Hi #USERNAME#,\n\nThanks for booking the event:\n\n#EVENT_DETAILS#\n\nPlease contact us if you have questions.\n\nKind Regards.\n#SITE_NAME#";
+		}
+
+		if($dpProEventCalendar_class->calendar_obj->booking_email_template_admin == '') {
+			$dpProEventCalendar_class->calendar_obj->booking_email_template_admin = "The user #USERNAME# (#USEREMAIL#) booked the event:\n\n#EVENT_DETAILS#\n\n#COMMENT#\n\n#SITE_NAME#";
+		}
+
+		add_filter( 'wp_mail_from_name', 'dpProEventCalendar_wp_mail_from_name' );
+		add_filter( 'wp_mail_from', 'dpProEventCalendar_wp_mail_from' );
+		$headers = 'Content-Type: text/html; charset=UTF-8';
+
+		//To All Users
+		$users = get_users();
+		foreach( $users as $user ) {
+			$new_email =  "Hi #USERNAME#,\n\nAn event:\n\n#EVENT_TITLE# has been added in calendar.\n\nPlease contact us if you have questions.\n\nKind Regards.\n#SITE_NAME#";
+			wp_mail( $user->user_email, get_bloginfo('name'), apply_filters('pec_new_event_published', $new_email, $id_event, $user->display_name, $user->user_email, $event_date, $comment, $quantity, '', ''), $headers );
+		}
+	}
 	die();
 }
 
@@ -3715,6 +3814,7 @@ function dpProEventCalendar_bookEventAdmin() {
 
 	if(!is_numeric($_POST['eventid'])) { die(); }
 
+	$calendar = $_POST['calendar'];
 	$eventid = $_POST['eventid'];
 	$userid = $_POST['userid'];
 	$phone = $_POST['phone'];
@@ -3765,7 +3865,11 @@ function dpProEventCalendar_bookEventAdmin() {
 	);
 
 	$id_booking = $wpdb->insert_id;
-
+	$dpProEventCalendar_class = new DpProEventCalendar( false, $calendar );
+	$dpProEventCalendar_class->getCalendarData();
+	if($dpProEventCalendar_class->calendar_obj->booking_email_template_user == '') {
+		$dpProEventCalendar_class->calendar_obj->booking_email_template_user = "Hi #USERNAME#,\n\nThanks for booking the event:\n\n#EVENT_DETAILS#\n\nPlease contact us if you have questions.\n\nKind Regards.\n#SITE_NAME#";
+	}
 	dpProEventCalendar_getMoreBookings(1, 0, $eventid, '', $fromedit);
 	die();
 }
@@ -3840,10 +3944,10 @@ function dpProEventCalendar_getMoreBookings($limit = 30, $offset = '', $eventid 
 	<tr>
 		<td width="200"><?php echo $userdata->display_name?> <br>
 			<?php if($userdata->user_email != "") {?>
-			<span class="dashicons dashicons-email-alt"></span><input type="text" readonly="readonly" name="pec_booking_email[<?php echo $booking->id?>]" class="pec_booking_text" value="<?php echo $userdata->user_email?>" /><br>
+			<span class="dashicons dashicons-email-alt"></span><input type="text" readonly name="pec_booking_email[<?php echo $booking->id?>]" class="pec_booking_text" value="<?php echo $userdata->user_email?>" /><br>
 			<?php }?>
 			<?php if($booking->phone != "") {?>
-				<span class="dashicons dashicons-phone"></span><input type="text" readonly="readonly" name="pec_booking_phone[<?php echo $booking->id?>]"  class="pec_booking_text" value="<?php echo $booking->phone?>" />
+				<span class="dashicons dashicons-phone"></span><input type="text" readonly name="pec_booking_phone[<?php echo $booking->id?>]"  class="pec_booking_text" value="<?php echo $booking->phone?>" />
 			<?php }?>
 		</td>
 		<td><?php echo date_i18n(get_option('date_format') . ' '. get_option('time_format'), strtotime($booking->booking_date))?></td>

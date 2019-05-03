@@ -1392,9 +1392,9 @@ class DpProEventCalendar {
 			}
 
 			if(empty($str_disable_attr)) {
-				$return .= '<div class="pec_event_page_book_wrapper"><a href="#" class="pec_event_page_book" data-event-id="'.$post_id.'" data-calendar="'.$calendar.'" data-date="'.$date.'"><i class="fa fa-calendar"></i><strong>'.$this->translation['TXT_BOOK_EVENT'].'</strong>' . (get_post_meta($post_id, 'pec_booking_price', true) > 0 && $dp_pec_payments['currency'] != "" ? ' <div class="pec_booking_price">'.get_post_meta($post_id, 'pec_booking_price', true). ' ' .$dp_pec_payments['currency'].'</div>' : '').'</a>';
+				$return .= '<div class="pec_event_page_book_wrapper"><a href="#" class="pec_event_page_book" data-event-id="'.$post_id.'" data-calendar="'.$calendar.'" data-date="'.$date.'"><i class="fa fa-calendar"></i><strong>Asistiré</strong>' . (get_post_meta($post_id, 'pec_booking_price', true) > 0 && $dp_pec_payments['currency'] != "" ? ' <div class="pec_booking_price">'.get_post_meta($post_id, 'pec_booking_price', true). ' ' .$dp_pec_payments['currency'].'</div>' : '').'</a>';
 			}
-
+			//'.$this->translation['TXT_BOOK_EVENT'].'
 			//$return .= 	$this->getBookingForm($post_id, $date);
 
 			if($clear)
