@@ -8647,7 +8647,7 @@ class DpProEventCalendar {
 							<div class="misc-pub-section">
 								<label for="pec_new_booking_user" style="font-weight: bold;text-transform: inherit;">Usuario</label>
 								<select name="pec_new_booking_user" id="pec_new_booking_user" style="padding: 10px; margin-left: 19px!important;" '.$str_disable_attr.'>';
-									$blogusers = get_users( 'orderby=nicename&number=2000' );
+									$blogusers = get_users( 'orderby=nicename&number=2000&meta_key=eonet_mua_first_access&meta_value=1' );
 									foreach($blogusers as $user ) {
 										if(!in_array($user->ID, $bookings_users)) {
 											$html .= '<option value="'.$user->ID.'">'.$user->display_name.'</option>';

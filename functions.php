@@ -3814,7 +3814,6 @@ function dpProEventCalendar_bookEventAdmin() {
 
 	if(!is_numeric($_POST['eventid'])) { die(); }
 
-	$calendar = $_POST['calendar'];
 	$eventid = $_POST['eventid'];
 	$userid = $_POST['userid'];
 	$phone = $_POST['phone'];
@@ -3865,7 +3864,9 @@ function dpProEventCalendar_bookEventAdmin() {
 	);
 
 	$id_booking = $wpdb->insert_id;
-	$dpProEventCalendar_class = new DpProEventCalendar( false, $calendar );
+	require_once('classes/base.class.php');
+	$dpProEventCalendar_class = new DpProEventCalendar();
+	$dpProEventCalendar_class->setCalendar($dpProEventCalendar_class->getCalendarByEvent($eventid));
 	$dpProEventCalendar_class->getCalendarData();
 	if($dpProEventCalendar_class->calendar_obj->booking_email_template_user == '') {
 		$dpProEventCalendar_class->calendar_obj->booking_email_template_user = "Hi #USERNAME#,\n\nThanks for booking the event:\n\n#EVENT_DETAILS#\n\nPlease contact us if you have questions.\n\nKind Regards.\n#SITE_NAME#";
